@@ -8,7 +8,7 @@ module Lib (module Lib) where
 
 import Control.Lens
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState (get, put), StateT (runStateT), gets, modify')
+import Control.Monad.State (MonadState (get, state), StateT (runStateT), modify')
 
 import Data.Function (fix)
 import Data.Functor (void)
@@ -63,22 +63,15 @@ process = \case
 parseInteger ∷ Text → Integer
 parseInteger = either error fst . decimal
 
-addToStack ∷ Integer → Stack → Stack
-addToStack n = MkStack . V.cons n . (^. _Wrapped')
-
 push ∷ Integer → Op ()
-push n = modify' (#stack %~ addToStack n)
+push n = modify' (#stack . _Wrapped' %~ V.cons n)
 
 pop ∷ Op Integer
-pop = do
-  s ← gets (^. #stack . _Wrapped')
-  if not (null s)
-    then do
-      let (h, t) = V.splitAt 1 s
-      old ← get
-      put old{stack = MkStack t}
-      pure $ V.head h
-    else error "Stack underflow!"
+pop = state \old →
+  let s = old ^. #stack . _Wrapped'
+   in if not (null s)
+        then let (h, t) = V.splitAt 1 s in (V.head h, old & #stack . _Wrapped' .~ t)
+        else error "Stack underflow!"
 
 add ∷ Op ()
 add = do
