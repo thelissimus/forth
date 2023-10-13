@@ -1,0 +1,43 @@
+cabal-version: 3.0
+name:          forth
+version:       0.0.0.0
+license:       BSD-3-Clause
+license-file:  LICENSE
+build-type:    Simple
+
+common warnings
+  ghc-options:
+    -Wall -Wextra -Weverything -Wcompat -Wno-implicit-prelude
+    -Wno-unsafe -Wno-missing-safe-haskell-mode
+    -Wno-missing-import-lists -haddock
+
+common defaults
+  default-language:   GHC2021
+  default-extensions:
+    BlockArguments
+    DerivingStrategies
+    UnicodeSyntax
+
+library
+  import:          warnings, defaults
+  exposed-modules: Lib
+  build-depends:   base ^>=4.17.2.0
+  hs-source-dirs:  src
+
+executable forth
+  import:         warnings, defaults
+  main-is:        Main.hs
+  build-depends:
+    , base   ^>=4.17.2.0
+    , forth
+
+  hs-source-dirs: app
+
+test-suite forth-test
+  import:         warnings, defaults
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Main.hs
+  build-depends:
+    , base   ^>=4.17.2.0
+    , forth
