@@ -92,9 +92,7 @@ dup = do
   push a
 
 drop ∷ Op ()
-drop = do
-  _ ← pop
-  pure ()
+drop = void pop
 
 swap ∷ Op ()
 swap = do
