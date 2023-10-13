@@ -1,7 +1,8 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Lib (module Lib) where
 
@@ -22,9 +23,10 @@ import Data.Vector qualified as V
 import GHC.Generics (Generic)
 
 type Stack ∷ Type
-newtype Stack = MkStack {getStack ∷ Vector Integer}
+newtype Stack = MkStack (Vector Integer)
   deriving stock (Generic)
   deriving newtype (Show, Eq, Semigroup, Monoid)
+  deriving anyclass (Wrapped)
 
 type AppState ∷ Type
 data AppState = MkAppState
@@ -62,14 +64,14 @@ parseInteger ∷ Text → Integer
 parseInteger = either error fst . decimal
 
 addToStack ∷ Integer → Stack → Stack
-addToStack n = MkStack . V.cons n . getStack
+addToStack n = MkStack . V.cons n . (^. _Wrapped')
 
 push ∷ Integer → Op ()
 push n = modify' (#stack %~ addToStack n)
 
 pop ∷ Op Integer
 pop = do
-  s ← gets (getStack . (.stack))
+  s ← gets (^. #stack . _Wrapped')
   if not (null s)
     then do
       let (h, t) = V.splitAt 1 s
