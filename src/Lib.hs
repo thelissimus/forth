@@ -7,11 +7,14 @@ module Lib (module Lib) where
 
 import Control.Lens
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState (get, put), gets, modify')
+import Control.Monad.State (MonadState (get, put), StateT (runStateT), gets, modify')
 
+import Data.Function (fix)
+import Data.Functor (void)
 import Data.Generics.Labels ()
 import Data.Kind (Type)
 import Data.Text (Text)
+import Data.Text.IO qualified as TIO
 import Data.Text.Read (decimal)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
@@ -127,3 +130,6 @@ period = pop >>= liftIO . putStrLn . ("Result: " <>) . show
 
 dump ∷ (MonadIO m, MonadState AppState m) ⇒ m ()
 dump = get >>= liftIO . print
+
+repl ∷ (MonadIO m) ⇒ m ()
+repl = void $ runStateT (fix \loop → liftIO TIO.getLine >>= process >> loop) mempty

@@ -1,4 +1,6 @@
 module Main (main) where
 
-main :: IO ()
-main = pure ()
+import Lib (repl)
+
+main ∷ IO ()
+main = repl
