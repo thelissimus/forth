@@ -22,7 +22,9 @@ library
   import:          warnings, defaults
   exposed-modules: Lib
   build-depends:
-    , base    ^>=4.17.2.0
+    , base          ^>=4.17.2.0
+    , generic-lens
+    , lens
     , mtl
     , text
     , vector

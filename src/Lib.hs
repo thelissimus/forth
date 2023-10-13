@@ -1,20 +1,25 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoFieldSelectors #-}
 
 module Lib (module Lib) where
 
+import Control.Lens
 import Control.Monad.State (MonadState (get, put), gets, modify')
 
+import Data.Generics.Labels ()
 import Data.Kind (Type)
 import Data.Text (Text)
 import Data.Text.Read (decimal)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 
+import GHC.Generics (Generic)
+
 type Stack ∷ Type
 newtype Stack = MkStack {getStack ∷ Vector Integer}
+  deriving stock (Generic)
   deriving newtype (Show, Eq, Semigroup, Monoid)
 
 type AppState ∷ Type
@@ -22,7 +27,19 @@ data AppState = MkAppState
   { buffer ∷ [Text]
   , stack ∷ Stack
   }
-  deriving stock (Show)
+  deriving stock (Generic, Show)
+
+instance Semigroup AppState where
+  a <> b =
+    a
+      & #buffer <>~ (b ^. #buffer)
+      & #stack <>~ (b ^. #stack)
+
+instance Monoid AppState where
+  mempty = MkAppState{buffer = mempty, stack = mempty}
+
+type Op ∷ Type → Type
+type Op a = ∀ {m ∷ Type → Type}. (MonadState AppState m) ⇒ m a
 
 process ∷ (MonadState AppState m) ⇒ Text → m ()
 process = \case
@@ -31,7 +48,7 @@ process = \case
   "dup" → dup
   "drop" → Lib.drop
   "swap" → swap
-  "over" → over
+  "over" → Lib.over
   "rot" → rot
   a → push (parseInteger a)
 
@@ -39,53 +56,53 @@ parseInteger ∷ Text → Integer
 parseInteger = either error fst . decimal
 
 addToStack ∷ Integer → Stack → Stack
-addToStack e (MkStack s) = MkStack $ V.cons e s
+addToStack n = MkStack . V.cons n . getStack
 
-push ∷ (MonadState AppState m) ⇒ Integer → m ()
-push a = modify' (\s → s{stack = addToStack a s.stack})
+push ∷ Integer → Op ()
+push n = modify' (#stack %~ addToStack n)
 
-pop ∷ (MonadState AppState m) ⇒ m Integer
+pop ∷ Op Integer
 pop = do
-  (MkStack s) ← gets (.stack)
-  if length s <= 1
+  s ← gets (getStack . (.stack))
+  if not (null s)
     then do
       let (h, t) = V.splitAt 1 s
       old ← get
-      put $ old{stack = MkStack t}
+      put old{stack = MkStack t}
       pure $ V.head h
     else error "Stack underflow!"
 
-add ∷ (MonadState AppState m) ⇒ m ()
+add ∷ Op ()
 add = do
   a ← pop
   b ← pop
   push (a + b)
 
-sub ∷ (MonadState AppState m) ⇒ m ()
+sub ∷ Op ()
 sub = do
   a ← pop
   b ← pop
   push (a - b)
 
-dup ∷ (MonadState AppState m) ⇒ m ()
+dup ∷ Op ()
 dup = do
   a ← pop
   push a
   push a
 
-drop ∷ (MonadState AppState m) ⇒ m ()
+drop ∷ Op ()
 drop = do
   _ ← pop
   pure ()
 
-swap ∷ (MonadState AppState m) ⇒ m ()
+swap ∷ Op ()
 swap = do
   a ← pop
   b ← pop
   push a
   push b
 
-over ∷ (MonadState AppState m) ⇒ m ()
+over ∷ Op ()
 over = do
   a ← pop
   b ← pop
@@ -93,7 +110,7 @@ over = do
   push a
   push b
 
-rot ∷ (MonadState AppState m) ⇒ m ()
+rot ∷ Op ()
 rot = do
   a ← pop
   b ← pop
