@@ -6,6 +6,7 @@
 module Lib (module Lib) where
 
 import Control.Lens
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState (get, put), gets, modify')
 
 import Data.Generics.Labels ()
@@ -41,7 +42,7 @@ instance Monoid AppState where
 type Op ∷ Type → Type
 type Op a = ∀ {m ∷ Type → Type}. (MonadState AppState m) ⇒ m a
 
-process ∷ (MonadState AppState m) ⇒ Text → m ()
+process ∷ (MonadIO m, MonadState AppState m) ⇒ Text → m ()
 process = \case
   "+" → add
   "-" → sub
@@ -50,6 +51,8 @@ process = \case
   "swap" → swap
   "over" → Lib.over
   "rot" → rot
+  "." → period
+  "dump" → dump
   a → push (parseInteger a)
 
 parseInteger ∷ Text → Integer
@@ -118,3 +121,9 @@ rot = do
   push b
   push a
   push c
+
+period ∷ (MonadIO m, MonadState AppState m) ⇒ m ()
+period = pop >>= liftIO . putStrLn . ("Result: " <>) . show
+
+dump ∷ (MonadIO m, MonadState AppState m) ⇒ m ()
+dump = get >>= liftIO . print
