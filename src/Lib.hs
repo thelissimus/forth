@@ -30,8 +30,8 @@ newtype Stack = MkStack (Vector Integer)
 
 type AppState ∷ Type
 data AppState = MkAppState
-  { buffer ∷ [Text]
-  , stack ∷ Stack
+  { buffer ∷ ![Text]
+  , stack ∷ !Stack
   }
   deriving stock (Generic, Show)
 
