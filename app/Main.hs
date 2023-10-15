@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Lib (repl)
+import Lib ()
 
 main ∷ IO ()
-main = repl
+main = pure ()

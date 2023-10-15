@@ -9,7 +9,7 @@ common warnings
   ghc-options:
     -Wall -Wextra -Weverything -Wcompat -Wno-implicit-prelude
     -Wno-unsafe -Wno-missing-safe-haskell-mode
-    -Wno-missing-import-lists -haddock
+    -Wno-missing-local-signatures -Wno-missing-import-lists -haddock
 
 common defaults
   default-language:   GHC2021

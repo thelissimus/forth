@@ -7,15 +7,13 @@
 module Lib (module Lib) where
 
 import Control.Lens
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState (get, state), StateT (runStateT), modify')
+import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.State (MonadState (get, state), modify')
 
-import Data.Function (fix)
 import Data.Functor (void)
 import Data.Generics.Labels ()
 import Data.Kind (Type)
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import Data.Text.Read (decimal)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
@@ -44,10 +42,16 @@ instance Semigroup AppState where
 instance Monoid AppState where
   mempty = MkAppState{buffer = mempty, stack = mempty}
 
-type Op ∷ Type → Type
-type Op a = ∀ {m ∷ Type → Type}. (MonadState AppState m) ⇒ m a
+type AppError ∷ Type
+data AppError
+  = ParseError !String
+  | StackUnderflow
+  deriving stock (Show)
 
-process ∷ (MonadIO m, MonadState AppState m) ⇒ Text → m ()
+type Op ∷ (Type → Type) → Type → Type
+type Op m a = (MonadState AppState m, MonadError AppError m) ⇒ m a
+
+process ∷ Text → Op m ()
 process = \case
   "+" → add
   "-" → sub
@@ -56,52 +60,48 @@ process = \case
   "swap" → swap
   "over" → Lib.over
   "rot" → rot
-  "." → period
-  "dump" → dump
-  a → push (parseInteger a)
+  input → parseInteger input >>= push
 
-parseInteger ∷ Text → Integer
-parseInteger = either error fst . decimal
+parseInteger ∷ (MonadError AppError m) ⇒ Text → m Integer
+parseInteger = either (throwError . ParseError) (pure . fst) . decimal
 
-push ∷ Integer → Op ()
+push ∷ (MonadState AppState m) ⇒ Integer → m ()
 push n = modify' (#stack . _Wrapped' %~ V.cons n)
 
-pop ∷ Op Integer
-pop = state \old →
-  let s = old ^. #stack . _Wrapped'
-   in if not (null s)
-        then let (h, t) = V.splitAt 1 s in (V.head h, old & #stack . _Wrapped' .~ t)
-        else error "Stack underflow!"
+pop ∷ Op m Integer
+pop = get >>= maybe (throwError StackUnderflow) update . V.uncons . (^. #stack . _Wrapped')
+ where
+  update (h, t) = state \s → (h, s & #stack . _Wrapped' .~ t)
 
-add ∷ Op ()
+add ∷ Op m ()
 add = do
   a ← pop
   b ← pop
   push (a + b)
 
-sub ∷ Op ()
+sub ∷ Op m ()
 sub = do
   a ← pop
   b ← pop
   push (a - b)
 
-dup ∷ Op ()
+dup ∷ Op m ()
 dup = do
   a ← pop
   push a
   push a
 
-drop ∷ Op ()
+drop ∷ Op m ()
 drop = void pop
 
-swap ∷ Op ()
+swap ∷ Op m ()
 swap = do
   a ← pop
   b ← pop
   push a
   push b
 
-over ∷ Op ()
+over ∷ Op m ()
 over = do
   a ← pop
   b ← pop
@@ -109,7 +109,7 @@ over = do
   push a
   push b
 
-rot ∷ Op ()
+rot ∷ Op m ()
 rot = do
   a ← pop
   b ← pop
@@ -117,12 +117,3 @@ rot = do
   push b
   push a
   push c
-
-period ∷ (MonadIO m, MonadState AppState m) ⇒ m ()
-period = pop >>= liftIO . putStrLn . ("Result: " <>) . show
-
-dump ∷ (MonadIO m, MonadState AppState m) ⇒ m ()
-dump = get >>= liftIO . print
-
-repl ∷ (MonadIO m) ⇒ m ()
-repl = void $ runStateT (fix \loop → liftIO TIO.getLine >>= process >> loop) mempty
