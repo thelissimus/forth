@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -18,7 +19,7 @@ import Data.Text.Read (decimal)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 
-import GHC.Generics (Generic)
+import GHC.Generics (Generic, Generically (..))
 
 type Stack ∷ Type
 newtype Stack = MkStack (Vector Integer)
@@ -32,15 +33,7 @@ data AppState = MkAppState
   , stack ∷ !Stack
   }
   deriving stock (Generic, Show)
-
-instance Semigroup AppState where
-  a <> b =
-    a
-      & #buffer <>~ (b ^. #buffer)
-      & #stack <>~ (b ^. #stack)
-
-instance Monoid AppState where
-  mempty = MkAppState{buffer = mempty, stack = mempty}
+  deriving (Semigroup, Monoid) via Generically AppState
 
 type AppError ∷ Type
 data AppError

@@ -22,7 +22,7 @@ library
   import:          warnings, defaults
   exposed-modules: Lib
   build-depends:
-    , base          ^>=4.17.2.0
+    , base          >=4.7 && <5
     , generic-lens
     , lens
     , mtl
@@ -35,7 +35,7 @@ executable forth
   import:         warnings, defaults
   main-is:        Main.hs
   build-depends:
-    , base   ^>=4.17.2.0
+    , base   >=4.7 && <5
     , forth
 
   hs-source-dirs: app
@@ -46,5 +46,5 @@ test-suite forth-test
   hs-source-dirs: test
   main-is:        Main.hs
   build-depends:
-    , base   ^>=4.17.2.0
+    , base   >=4.7 && <5
     , forth
